@@ -1,0 +1,39 @@
+[package]
+name = "alarm-clock"
+version = "1.0.0"
+description = "桌面闹钟 - 番茄钟、天气闹钟、窗口锁定"
+authors = ["Alarm Clock Team"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.70"
+
+[lib]
+name = "alarm_clock_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+cc = "1"
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+# macOS 构建设置
+[package.metadata.bundle]
+identifier = "com.alarmclock.desktop"
+icon = ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns"]
+version = "1.0.0"
+resources = []
+copyright = "Copyright (c) 2024 Alarm Clock Team"
+category = "Productivity"
+short_description = "桌面闹钟"
+long_description = """
+一个支持番茄钟、天气闹钟和窗口锁定的桌面小工具。
+适用于 macOS 10.15+
+"""

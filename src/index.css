@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+  
+  html, body, #root {
+    @apply w-full h-full m-0 p-0 overflow-hidden;
+  }
+  
+  body {
+    @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl;
+  }
+  
+  .btn-primary {
+    @apply px-4 py-2 bg-gradient-to-r from-tomato to-tomato-dark text-white rounded-xl 
+           font-medium transition-all duration-200 hover:scale-105 active:scale-95
+           shadow-lg shadow-tomato/30;
+  }
+  
+  .btn-secondary {
+    @apply px-4 py-2 bg-white/10 text-white rounded-xl font-medium 
+           transition-all duration-200 hover:bg-white/20 active:scale-95;
+  }
+  
+  .timer-display {
+    @apply text-6xl font-bold tracking-tight tabular-nums;
+    text-shadow: 0 4px 20px rgba(255, 107, 107, 0.5);
+  }
+  
+  .progress-ring {
+    transform: rotate(-90deg);
+  }
+  
+  .progress-ring-circle {
+    transition: stroke-dashoffset 0.5s ease;
+  }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

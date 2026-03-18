@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "桌面闹钟",
+  "version": "1.0.0",
+  "identifier": "com.alarmclock.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "桌面闹钟",
+        "width": 380,
+        "height": 720,
+        "minWidth": 360,
+        "minHeight": 600,
+        "resizable": true,
+        "maximizable": false,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": false,
+        "center": true,
+        "shadow": true,
+        "visible": true,
+        "acceptFirstMouse": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "default",
+          "description": "默认权限",
+          "permissions": [
+            "core:default"
+          ]
+        }
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}
