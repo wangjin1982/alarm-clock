@@ -1,16 +1,23 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Settings, X, GripHorizontal, Minus, User } from 'lucide-react';
 import { PomodoroTimer } from './components/PomodoroTimer';
+import { PomodoroQuoteCard } from './components/PomodoroQuoteCard';
 import { AlarmWidget } from './components/AlarmWidget';
+import { JingerLogo } from './components/JingerLogo';
 import { useSettings } from './hooks/useSettings';
+import { usePomodoro } from './hooks/usePomodoro';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '@tauri-apps/api/core';
 
 function App() {
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTauriEnv] = useState(() => isTauri());
   const { settings, loaded, updateSetting, toggleSetting } = useSettings();
+  const pomodoro = usePomodoro({
+    soundEnabled: settings.soundEnabled,
+    notificationsEnabled: settings.notifications,
+    nickname: settings.nickname,
+  });
 
   const getAppWindow = useCallback(async () => {
     if (isTauriEnv) {
@@ -19,34 +26,11 @@ function App() {
     return null;
   }, [isTauriEnv]);
 
-  // 更新时间
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('zh-CN', {
-      month: '2-digit',
-      day: '2-digit',
-      weekday: 'short',
-    });
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('zh-CN', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   const syncWindowState = useCallback(async () => {
     if (!isTauriEnv) {
@@ -117,10 +101,14 @@ function App() {
     return <div className="flex items-center justify-center h-full text-slate-400">加载中...</div>;
   }
 
+  const quoteText = pomodoro.mode === 'break'
+    ? '休息几分钟，下一轮继续稳稳推进。'
+    : pomodoro.quote;
+
   return (
     <div className="relative w-full h-full flex flex-col p-4 select-none">
       <div
-        className="flex items-center justify-between mb-3 rounded-2xl bg-white/5 px-3 py-2 transition-colors cursor-move"
+        className="mb-3 flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2 transition-colors cursor-move"
         onMouseDown={() => void startDraggingWindow()}
       >
         <div className="flex items-center gap-3">
@@ -147,16 +135,8 @@ function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-baseline gap-2 whitespace-nowrap text-right">
-            <div className="text-[2.2rem] font-bold leading-none tracking-tight tabular-nums">
-              {formatTime(currentTime)}
-            </div>
-            <div className="text-lg font-semibold leading-none tracking-tight tabular-nums text-slate-200">
-              {formatDate(currentTime)}
-            </div>
-          </div>
-
+        <div className="flex items-center justify-end gap-2">
+          <JingerLogo compact />
           <button 
             className="p-2 rounded-lg hover:bg-white/10 transition-colors text-slate-400"
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -167,18 +147,27 @@ function App() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 scrollbar-thin">
-        <PomodoroTimer
-          soundEnabled={settings.soundEnabled}
-          notificationsEnabled={settings.notifications}
-          nickname={settings.nickname}
-        />
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        <div className="flex flex-col gap-4">
+          <PomodoroTimer
+            mode={pomodoro.mode}
+            formattedTime={pomodoro.formattedTime}
+            isRunning={pomodoro.isRunning}
+            progress={pomodoro.progress}
+            start={pomodoro.start}
+            pause={pomodoro.pause}
+            reset={pomodoro.reset}
+            skip={pomodoro.skip}
+          />
 
-        <AlarmWidget
-          nickname={settings.nickname}
-          notificationsEnabled={settings.notifications}
-          soundEnabled={settings.soundEnabled}
-        />
+          <PomodoroQuoteCard quoteText={quoteText} />
+
+          <AlarmWidget
+            nickname={settings.nickname}
+            notificationsEnabled={settings.notifications}
+            soundEnabled={settings.soundEnabled}
+          />
+        </div>
       </div>
 
       <div 
@@ -282,14 +271,11 @@ function App() {
                   </button>
                 </div>
               </div>
-
-              <div className="border-t border-white/10" />
-
               {/* 关于 */}
               <div className="pt-2 space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>版本</span>
-                  <span>v1.0.0</span>
+                  <span>v2.0.0</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>运行环境</span>

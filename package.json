@@ -1,6 +1,6 @@
 {
   "name": "alarm-clock",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "桌面闹钟 - 番茄钟、闹钟、桌面提醒",
   "type": "module",
   "scripts": {

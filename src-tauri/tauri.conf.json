@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.0",
   "productName": "桌面闹钟",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "identifier": "com.alarmclock.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",

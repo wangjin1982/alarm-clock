@@ -5,14 +5,14 @@ export interface Settings {
   notifications: boolean;
   soundEnabled: boolean;
   alwaysOnTop: boolean;
-}
+};
 
 const defaultSettings: Settings = {
   nickname: '',
   notifications: true,
   soundEnabled: true,
   alwaysOnTop: false,
-};
+}
 
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
