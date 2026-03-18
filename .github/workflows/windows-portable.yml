@@ -1,0 +1,49 @@
+name: windows-portable
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows-portable:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Windows executable
+        run: cargo build --manifest-path src-tauri/Cargo.toml --release
+
+      - name: Create portable package
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $portableDir = "release/windows-portable"
+          New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+          Copy-Item "src-tauri/target/release/alarm-clock.exe" "$portableDir/桌面闹钟.exe"
+          Copy-Item "README.md" "$portableDir/README.md"
+          Compress-Archive -Path "$portableDir/*" -DestinationPath "release/桌面闹钟_${version}_windows_portable.zip" -Force
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: release/桌面闹钟_*_windows_portable.zip

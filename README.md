@@ -67,6 +67,19 @@ release/
 
 如果当前环境的 `hdiutil` 失败，脚本会保留已签名完成的 `.app`。
 
+## Windows 便携版
+
+仓库已经提供 GitHub Actions 工作流来构建 Windows 免安装运行版：
+
+- 工作流文件：`.github/workflows/windows-portable.yml`
+- 产物格式：`桌面闹钟_<版本号>_windows_portable.zip`
+- 包内包含：可直接运行的 `桌面闹钟.exe`
+
+说明：
+
+- 这个便携版会在 GitHub Actions 的 Windows 环境中生成，不依赖当前这台 mac 本机交叉编译。
+- Windows 机器首次运行时通常仍需要系统已安装 WebView2 Runtime。
+
 ## 权限与发布说明
 
 - 当前仓库默认产出的应用是本地签名版本，不包含 Apple notarization 公证。
