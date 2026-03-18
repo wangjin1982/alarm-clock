@@ -1,7 +1,7 @@
 {
   "name": "alarm-clock",
-  "version": "1.0.0",
-  "description": "桌面闹钟 - 番茄钟、天气闹钟、窗口锁定",
+  "version": "1.0.1",
+  "description": "桌面闹钟 - 番茄钟、闹钟、桌面提醒",
   "type": "module",
   "scripts": {
     "dev": "vite",

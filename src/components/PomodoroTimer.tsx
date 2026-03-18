@@ -1,5 +1,6 @@
 import { Play, Pause, RotateCcw, SkipForward, Coffee, Brain } from 'lucide-react';
 import { usePomodoro, PomodoroMode } from '../hooks/usePomodoro';
+import { JingerLogo } from './JingerLogo';
 
 interface PomodoroTimerProps {
   soundEnabled: boolean;
@@ -36,7 +37,6 @@ export function PomodoroTimer({ soundEnabled, notificationsEnabled, nickname }: 
     mode, 
     formattedTime, 
     isRunning, 
-    completedSessions, 
     progress,
     quote,
     start, 
@@ -62,11 +62,7 @@ export function PomodoroTimer({ soundEnabled, notificationsEnabled, nickname }: 
           <span className={config.color}>{config.icon}</span>
           <span className={`text-sm font-medium ${config.color}`}>{config.label}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">今日已完成</span>
-          <span className="text-sm font-bold text-slate-300">{completedSessions}</span>
-          <span className="text-xs text-slate-500">个番茄</span>
-        </div>
+        <JingerLogo />
       </div>
 
       {/* 时间显示 */}

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 APP_NAME="桌面闹钟"
-APP_VERSION="1.0.0"
+APP_VERSION="1.0.1"
 APP_PATH="src-tauri/target/release/bundle/macos/${APP_NAME}.app"
 RELEASE_DIR="release"
 DMG_PATH="${RELEASE_DIR}/${APP_NAME}_${APP_VERSION}_arm64.dmg"
