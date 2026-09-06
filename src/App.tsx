@@ -316,7 +316,7 @@ function App() {
               <div className="pt-2 space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>版本</span>
-                  <span>v2.0.0</span>
+                  <span>v2.1.0</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>运行环境</span>
