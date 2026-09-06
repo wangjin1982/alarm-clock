@@ -3,7 +3,8 @@
 set -euo pipefail
 
 APP_NAME="桌面闹钟"
-APP_VERSION="2.0.0"
+# 版本号以 src-tauri/tauri.conf.json 为唯一来源，避免硬编码漏更
+APP_VERSION="$(/usr/bin/plutil -extract version raw src-tauri/tauri.conf.json)"
 APP_PATH="src-tauri/target/release/bundle/macos/${APP_NAME}.app"
 RELEASE_DIR="release"
 DMG_PATH="${RELEASE_DIR}/${APP_NAME}_${APP_VERSION}_arm64.dmg"

@@ -130,6 +130,7 @@ function App() {
     <div className="relative w-full h-full flex flex-col p-4 select-none">
       <div
         className="mb-3 flex items-center justify-between rounded-2xl bg-white/5 px-3 py-2 transition-colors cursor-move"
+        data-tauri-drag-region
         onMouseDown={() => void startDraggingWindow()}
       >
         <div className="flex items-center gap-3">
@@ -213,6 +214,7 @@ function App() {
 
       <div 
         className="absolute bottom-2 left-1/2 -translate-x-1/2 text-slate-500 cursor-move"
+        data-tauri-drag-region
         onMouseDown={() => void startDraggingWindow()}
       >
         <GripHorizontal size={20} />
