@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { BellRing, Clock3, Plus, Trash2 } from 'lucide-react';
 import { useWeather } from '../hooks/useWeather';
+import { SectionCard } from './SectionCard';
 
 interface AlarmWidgetProps {
   nickname: string;
   notificationsEnabled: boolean;
   soundEnabled: boolean;
+  expanded: boolean;
+  onToggle: () => void;
 }
 
 export function AlarmWidget({
   nickname,
   notificationsEnabled,
   soundEnabled,
+  expanded,
+  onToggle,
 }: AlarmWidgetProps) {
   const {
     alarms,
@@ -28,18 +33,22 @@ export function AlarmWidget({
   const [newHour, setNewHour] = useState(8);
   const [newMinute, setNewMinute] = useState(0);
 
+  const enabledCount = alarms.filter(alarm => alarm.enabled).length;
+
   const handleAddAlarm = () => {
     addAlarm(newHour, newMinute);
     setShowAddAlarm(false);
   };
 
   return (
-    <div className="glass-panel p-4">
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <div className="flex items-center gap-2">
-          <BellRing size={18} className="text-sky-light" />
-          <span className="font-medium text-sm">闹钟</span>
-        </div>
+    <SectionCard
+      icon={<BellRing size={18} />}
+      iconColor="text-sky-light"
+      title="闹钟"
+      expanded={expanded}
+      onToggle={onToggle}
+      summary={`${enabledCount} 个已开启`}
+      actions={
         <button
           onClick={() => setShowAddAlarm(true)}
           className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/20 px-2.5 py-1.5 text-xs text-sky-300 transition-colors hover:bg-sky-500/30"
@@ -47,8 +56,8 @@ export function AlarmWidget({
           <Plus size={14} />
           <span>添加闹钟</span>
         </button>
-      </div>
-
+      }
+    >
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-400 flex items-center gap-1">
@@ -56,7 +65,7 @@ export function AlarmWidget({
             闹钟列表
           </span>
           <span className="text-[11px] text-slate-500">
-            {alarms.filter(alarm => alarm.enabled).length} 个已开启
+            到点后自动提醒
           </span>
         </div>
 
@@ -156,6 +165,6 @@ export function AlarmWidget({
           </div>
         </div>
       )}
-    </div>
+    </SectionCard>
   );
 }

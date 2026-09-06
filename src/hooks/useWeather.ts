@@ -120,8 +120,10 @@ function normalizeCityName(cityName: string) {
 }
 
 function buildGeocodingQueries(cityName: string) {
+  // 查询词保留原始空格（如 "San Francisco"），打分时才忽略空格差异
+  const trimmed = cityName.trim().replace(/\s+/g, ' ');
+  const queries = [trimmed];
   const normalized = normalizeCityName(cityName);
-  const queries = [normalized];
 
   if (chineseCityPattern.test(normalized) && !citySuffixPattern.test(normalized)) {
     queries.push(`${normalized}市`);

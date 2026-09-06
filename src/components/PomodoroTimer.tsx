@@ -1,5 +1,6 @@
 import { Play, Pause, RotateCcw, SkipForward, Coffee, Brain } from 'lucide-react';
 import { PomodoroMode } from '../hooks/usePomodoro';
+import { SectionCard } from './SectionCard';
 
 interface PomodoroTimerProps {
   mode: PomodoroMode;
@@ -10,26 +11,28 @@ interface PomodoroTimerProps {
   pause: () => void;
   reset: () => void;
   skip: () => void;
+  expanded: boolean;
+  onToggle: () => void;
 }
 
 const modeConfig: Record<PomodoroMode, { icon: React.ReactNode; label: string; color: string; bgColor: string; gradient: string }> = {
-  work: { 
-    icon: <Brain size={16} />, 
-    label: '专注中', 
+  work: {
+    icon: <Brain size={16} />,
+    label: '专注中',
     color: 'text-tomato',
     bgColor: 'bg-tomato',
     gradient: 'from-rose-400 via-tomato to-orange-500',
   },
-  break: { 
-    icon: <Coffee size={16} />, 
-    label: '休息中', 
+  break: {
+    icon: <Coffee size={16} />,
+    label: '休息中',
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-400',
     gradient: 'from-emerald-400 via-teal-400 to-cyan-400',
   },
-  idle: { 
-    icon: <Brain size={16} />, 
-    label: '准备专注', 
+  idle: {
+    icon: <Brain size={16} />,
+    label: '准备专注',
     color: 'text-slate-400',
     bgColor: 'bg-slate-400',
     gradient: 'from-slate-400 via-slate-500 to-slate-400',
@@ -45,31 +48,33 @@ export function PomodoroTimer({
   pause,
   reset,
   skip,
+  expanded,
+  onToggle,
 }: PomodoroTimerProps) {
   const config = modeConfig[mode];
 
   return (
-    <div className="glass-panel p-4">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={config.color}>{config.icon}</span>
-            <span className={`text-sm font-medium ${config.color}`}>{config.label}</span>
-          </div>
-        </div>
-
-        <div className="min-w-[8.25rem] pt-1 text-right">
-          <div className="flex min-h-2 items-center justify-end">
-            {isRunning && (
-              <span className="flex h-2 w-2 relative">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${config.bgColor} opacity-75`}></span>
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${config.bgColor}`}></span>
-              </span>
-            )}
-          </div>
-          <div className={`mt-2 text-[2.85rem] font-bold leading-none tracking-[-0.08em] tabular-nums ${config.color}`}>
-            {formattedTime}
-          </div>
+    <SectionCard
+      icon={config.icon}
+      iconColor={config.color}
+      title="番茄钟"
+      expanded={expanded}
+      onToggle={onToggle}
+      summary={
+        <span className={`flex items-center gap-1.5 font-medium ${config.color}`}>
+          {isRunning && (
+            <span className="flex h-1.5 w-1.5 relative">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${config.bgColor} opacity-75`} />
+              <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${config.bgColor}`} />
+            </span>
+          )}
+          {config.label} · {formattedTime}
+        </span>
+      }
+    >
+      <div className="mb-4 flex items-center justify-end">
+        <div className={`text-[2.85rem] font-bold leading-none tracking-[-0.08em] tabular-nums ${config.color}`}>
+          {formattedTime}
         </div>
       </div>
 
@@ -82,20 +87,20 @@ export function PomodoroTimer({
           )}
         </div>
         <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-          <div 
+          <div
             className={`h-full rounded-full bg-gradient-to-r ${config.gradient} transition-all duration-1000 ease-linear`}
             style={{ width: `${progress}%` }}
           >
             <div className="h-full w-full relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" 
-                style={{ 
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"
+                style={{
                   animation: isRunning ? 'shimmer 2s infinite' : 'none'
                 }}
               />
             </div>
           </div>
         </div>
-        
+
         {/* 刻度标记 */}
         <div className="flex justify-between mt-1">
           {[0, 25, 50, 75, 100].map((mark) => (
@@ -116,7 +121,7 @@ export function PomodoroTimer({
         >
           <RotateCcw size={16} className="mx-auto" />
         </button>
-        
+
         {isRunning ? (
           <button
             onClick={pause}
@@ -134,7 +139,7 @@ export function PomodoroTimer({
             <span>{mode === 'idle' ? '开始专注' : '继续'}</span>
           </button>
         )}
-        
+
         <button
           onClick={skip}
           className="flex-1 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all text-slate-300 text-sm font-medium active:scale-95"
@@ -155,6 +160,6 @@ export function PomodoroTimer({
           100% { transform: translateX(100%); }
         }
       `}</style>
-    </div>
+    </SectionCard>
   );
 }

@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { Settings, X, GripHorizontal, Minus, User } from 'lucide-react';
 import { PomodoroTimer } from './components/PomodoroTimer';
 import { PomodoroQuoteCard } from './components/PomodoroQuoteCard';
+import { CountdownWidget } from './components/CountdownWidget';
+import { WeatherCard } from './components/WeatherCard';
 import { AlarmWidget } from './components/AlarmWidget';
 import { JingerLogo } from './components/JingerLogo';
 import { useSettings } from './hooks/useSettings';
@@ -9,10 +11,29 @@ import { usePomodoro } from './hooks/usePomodoro';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '@tauri-apps/api/core';
 
+type SectionKey = 'pomodoro' | 'countdown' | 'weather' | 'alarm';
+
+const EXPANDED_SECTION_KEY = 'alarm-clock-expanded-section';
+
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTauriEnv] = useState(() => isTauri());
   const { settings, loaded, updateSetting, toggleSetting } = useSettings();
+
+  const [expandedSection, setExpandedSection] = useState<SectionKey | null>(() => {
+    const saved = localStorage.getItem(EXPANDED_SECTION_KEY);
+    return saved === 'pomodoro' || saved === 'countdown' || saved === 'weather' || saved === 'alarm'
+      ? saved
+      : null;
+  });
+
+  const toggleSection = useCallback((key: SectionKey) => {
+    setExpandedSection(prev => {
+      const next = prev === key ? null : key;
+      localStorage.setItem(EXPANDED_SECTION_KEY, next ?? '');
+      return next;
+    });
+  }, []);
   const pomodoro = usePomodoro({
     soundEnabled: settings.soundEnabled,
     notificationsEnabled: settings.notifications,
@@ -158,14 +179,34 @@ function App() {
             pause={pomodoro.pause}
             reset={pomodoro.reset}
             skip={pomodoro.skip}
+            expanded={expandedSection === 'pomodoro'}
+            onToggle={() => toggleSection('pomodoro')}
           />
 
           <PomodoroQuoteCard quoteText={quoteText} />
+
+          <CountdownWidget
+            nickname={settings.nickname}
+            notificationsEnabled={settings.notifications}
+            soundEnabled={settings.soundEnabled}
+            expanded={expandedSection === 'countdown'}
+            onToggle={() => toggleSection('countdown')}
+          />
+
+          <WeatherCard
+            nickname={settings.nickname}
+            notificationsEnabled={settings.notifications}
+            soundEnabled={settings.soundEnabled}
+            expanded={expandedSection === 'weather'}
+            onToggle={() => toggleSection('weather')}
+          />
 
           <AlarmWidget
             nickname={settings.nickname}
             notificationsEnabled={settings.notifications}
             soundEnabled={settings.soundEnabled}
+            expanded={expandedSection === 'alarm'}
+            onToggle={() => toggleSection('alarm')}
           />
         </div>
       </div>

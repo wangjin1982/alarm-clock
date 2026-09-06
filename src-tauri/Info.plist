@@ -26,5 +26,7 @@
     <string>Copyright © 2024 Alarm Clock. All rights reserved.</string>
     <key>NSNotificationsUsageDescription</key>
     <string>需要发送通知提醒您番茄钟结束和天气闹钟播报等信息</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>需要获取您的位置来自动显示当地天气</string>
 </dict>
 </plist>

@@ -2,6 +2,31 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
 const DEFAULT_CITY = '北京';
+const MANUAL_CITY_KEY = 'alarm-clock-manual-city';
+
+function loadManualCity(): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    return localStorage.getItem(MANUAL_CITY_KEY)?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveManualCity(city: string | null) {
+  try {
+    if (city) {
+      localStorage.setItem(MANUAL_CITY_KEY, city);
+    } else {
+      localStorage.removeItem(MANUAL_CITY_KEY);
+    }
+  } catch {
+    // localStorage 不可用时忽略，手动城市仅本次会话生效
+  }
+}
 
 type LocationPermission =
   | 'prompt'
@@ -44,9 +69,14 @@ interface NativeLocationResult {
   error?: string | null;
 }
 
-async function getCityByIP(): Promise<string | null> {
+interface IpCityResult {
+  city: string;
+  coordinates: LocationCoordinates | null;
+}
+
+async function getCityByIP(): Promise<IpCityResult | null> {
   try {
-    const response = await fetch('https://ipapi.co/json/', {
+    const response = await fetch('https://ipwho.is/', {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -57,58 +87,71 @@ async function getCityByIP(): Promise<string | null> {
       throw new Error('Failed to get location');
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      success?: boolean;
+      city?: string;
+      latitude?: number;
+      longitude?: number;
+    };
 
-    if (data.city) {
-      const cityMap: Record<string, string> = {
-        Beijing: '北京',
-        Shanghai: '上海',
-        Guangzhou: '广州',
-        Shenzhen: '深圳',
-        Hangzhou: '杭州',
-        Nanjing: '南京',
-        Chengdu: '成都',
-        Wuhan: '武汉',
-        "Xi'an": '西安',
-        Chongqing: '重庆',
-        Tianjin: '天津',
-        Suzhou: '苏州',
-        Wuxi: '无锡',
-        Ningbo: '宁波',
-        Qingdao: '青岛',
-        Dalian: '大连',
-        Shenyang: '沈阳',
-        Jinan: '济南',
-        Harbin: '哈尔滨',
-        Changchun: '长春',
-        Zhengzhou: '郑州',
-        Changsha: '长沙',
-        Fuzhou: '福州',
-        Xiamen: '厦门',
-        Kunming: '昆明',
-        Guiyang: '贵阳',
-        Nanning: '南宁',
-        Haikou: '海口',
-        Lanzhou: '兰州',
-        Yinchuan: '银川',
-        Xining: '西宁',
-        Urumqi: '乌鲁木齐',
-        Lhasa: '拉萨',
-        Hohhot: '呼和浩特',
-        Taiyuan: '太原',
-        Shijiazhuang: '石家庄',
-        Hefei: '合肥',
-        Nanchang: '南昌',
-      };
-
-      return cityMap[data.city] || data.city;
+    if (!data.success || !data.city) {
+      return null;
     }
 
-    return null;
+    const coordinates = typeof data.latitude === 'number' && typeof data.longitude === 'number'
+      ? { lat: data.latitude, lon: data.longitude }
+      : null;
+
+    return {
+      city: cityMap[data.city] || data.city,
+      coordinates,
+    };
   } catch {
     return null;
   }
 }
+
+// IP 服务返回英文城市名，这里映射常用的中国城市
+const cityMap: Record<string, string> = {
+  Beijing: '北京',
+  Shanghai: '上海',
+  Guangzhou: '广州',
+  Shenzhen: '深圳',
+  Hangzhou: '杭州',
+  Nanjing: '南京',
+  Chengdu: '成都',
+  Wuhan: '武汉',
+  "Xi'an": '西安',
+  Chongqing: '重庆',
+  Tianjin: '天津',
+  Suzhou: '苏州',
+  Wuxi: '无锡',
+  Ningbo: '宁波',
+  Qingdao: '青岛',
+  Dalian: '大连',
+  Shenyang: '沈阳',
+  Jinan: '济南',
+  Harbin: '哈尔滨',
+  Changchun: '长春',
+  Zhengzhou: '郑州',
+  Changsha: '长沙',
+  Fuzhou: '福州',
+  Xiamen: '厦门',
+  Kunming: '昆明',
+  Guiyang: '贵阳',
+  Nanning: '南宁',
+  Haikou: '海口',
+  Lanzhou: '兰州',
+  Yinchuan: '银川',
+  Xining: '西宁',
+  Urumqi: '乌鲁木齐',
+  Lhasa: '拉萨',
+  Hohhot: '呼和浩特',
+  Taiyuan: '太原',
+  Shijiazhuang: '石家庄',
+  Hefei: '合肥',
+  Nanchang: '南昌',
+};
 
 function mapNativePermission(status: string): LocationPermission {
   switch (status) {
@@ -219,21 +262,28 @@ function getPermissionMessage(permission: LocationPermission, fallbackError: str
 }
 
 export function useLocation() {
+  const manualCity = loadManualCity();
   const [location, setLocation] = useState<LocationData>({
-    city: DEFAULT_CITY,
+    city: manualCity ?? DEFAULT_CITY,
     coordinates: null,
-    loading: true,
+    loading: !manualCity,
     error: null,
     permission: 'prompt',
-    source: 'default',
+    source: manualCity ? 'manual' : 'default',
   });
   const requestIdRef = useRef(0);
 
   const updateCity = useCallback((city: string) => {
+    const trimmed = city.trim().slice(0, 30);
+    if (!trimmed) {
+      return;
+    }
+
+    saveManualCity(trimmed);
     requestIdRef.current += 1;
     setLocation(prev => ({
       ...prev,
-      city,
+      city: trimmed,
       coordinates: null,
       loading: false,
       error: null,
@@ -245,13 +295,17 @@ export function useLocation() {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
+    // 手动指定城市视为放弃自动定位
+    saveManualCity(null);
+
     setLocation(prev => ({
       ...prev,
       loading: true,
       error: null,
+      source: prev.source === 'manual' ? 'default' : prev.source,
     }));
 
-    const [systemLocation, ipCity] = await Promise.all([
+    const [systemLocation, ipResult] = await Promise.all([
       getSystemLocation(),
       getCityByIP(),
     ]);
@@ -259,6 +313,8 @@ export function useLocation() {
     if (requestId !== requestIdRef.current) {
       return;
     }
+
+    const ipCity = ipResult?.city ?? null;
 
     if (systemLocation.coordinates) {
       setLocation({
@@ -274,7 +330,7 @@ export function useLocation() {
 
     setLocation(prev => ({
       city: prev.source === 'manual' ? prev.city : ipCity ?? DEFAULT_CITY,
-      coordinates: null,
+      coordinates: prev.source === 'manual' ? null : ipResult?.coordinates ?? null,
       loading: false,
       error: getPermissionMessage(systemLocation.permission, systemLocation.error),
       permission: systemLocation.permission,
@@ -283,8 +339,12 @@ export function useLocation() {
   }, []);
 
   useEffect(() => {
-    void refreshLocation();
-  }, [refreshLocation]);
+    // 已手动指定城市时不自动定位，直接按城市查天气
+    if (!manualCity) {
+      void refreshLocation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const statusText = useMemo(() => {
     if (location.loading) {

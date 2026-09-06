@@ -18,11 +18,11 @@ unsafe extern "C" {
 }
 
 #[derive(Clone, Default)]
-struct PomodoroScheduler {
+struct PhaseScheduler {
     generation: Arc<AtomicU64>,
 }
 
-impl PomodoroScheduler {
+impl PhaseScheduler {
     fn next_generation(&self) -> u64 {
         self.generation.fetch_add(1, Ordering::SeqCst) + 1
     }
@@ -35,6 +35,12 @@ impl PomodoroScheduler {
         self.generation.load(Ordering::SeqCst) == generation
     }
 }
+
+#[derive(Clone, Default)]
+struct PomodoroScheduler(PhaseScheduler);
+
+#[derive(Clone, Default)]
+struct CountdownScheduler(PhaseScheduler);
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +60,24 @@ struct PomodoroScheduleRequest {
 struct PomodoroFinishedPayload {
     phase_id: String,
     completed_mode: PomodoroMode,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CountdownScheduleRequest {
+    phase_id: String,
+    duration_seconds: u64,
+    nickname: Option<String>,
+    speech_text: Option<String>,
+    notification_body: Option<String>,
+    sound_enabled: bool,
+    notifications_enabled: bool,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct CountdownFinishedPayload {
+    phase_id: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -109,38 +133,55 @@ fn notify_on_macos(title: &str, body: &str) {
     }
 }
 
+fn deliver_phase_alert(
+    notification_title: &str,
+    fallback_body: String,
+    speech_override: Option<&str>,
+    notification_override: Option<&str>,
+    sound_enabled: bool,
+    notifications_enabled: bool,
+) {
+    let notification_body = notification_override
+        .map(str::to_string)
+        .unwrap_or(fallback_body);
+    let speech_text = speech_override
+        .map(str::to_string)
+        .unwrap_or_else(|| notification_body.clone());
+
+    if sound_enabled {
+        speak_on_macos(&speech_text);
+    }
+
+    if notifications_enabled {
+        notify_on_macos(notification_title, &notification_body);
+    }
+}
+
 #[tauri::command]
 fn schedule_pomodoro_phase(
     app: AppHandle,
     scheduler: State<'_, PomodoroScheduler>,
     request: PomodoroScheduleRequest,
 ) {
-    let scheduler = scheduler.inner().clone();
-    let generation = scheduler.next_generation();
+    let clock = scheduler.inner().0.clone();
+    let generation = clock.next_generation();
 
     thread::spawn(move || {
         thread::sleep(Duration::from_secs(request.duration_seconds));
 
-        if !scheduler.is_current(generation) {
+        if !clock.is_current(generation) {
             return;
         }
 
-        let notification_body = request
-            .notification_body
-            .clone()
-            .unwrap_or_else(|| request.mode.notification_body(request.nickname.as_deref()));
-        let speech_text = request
-            .speech_text
-            .clone()
-            .unwrap_or_else(|| notification_body.clone());
-
-        if request.sound_enabled {
-            speak_on_macos(&speech_text);
-        }
-
-        if request.notifications_enabled {
-            notify_on_macos("番茄钟提醒", &notification_body);
-        }
+        let fallback_body = request.mode.notification_body(request.nickname.as_deref());
+        deliver_phase_alert(
+            "番茄钟提醒",
+            fallback_body,
+            request.speech_text.as_deref(),
+            request.notification_body.as_deref(),
+            request.sound_enabled,
+            request.notifications_enabled,
+        );
 
         let payload = PomodoroFinishedPayload {
             phase_id: request.phase_id,
@@ -153,7 +194,52 @@ fn schedule_pomodoro_phase(
 
 #[tauri::command]
 fn cancel_pomodoro_phase(scheduler: State<'_, PomodoroScheduler>) {
-    scheduler.cancel();
+    scheduler.0.cancel();
+}
+
+#[tauri::command]
+fn schedule_countdown_phase(
+    app: AppHandle,
+    scheduler: State<'_, CountdownScheduler>,
+    request: CountdownScheduleRequest,
+) {
+    let clock = scheduler.inner().0.clone();
+    let generation = clock.next_generation();
+
+    thread::spawn(move || {
+        thread::sleep(Duration::from_secs(request.duration_seconds));
+
+        if !clock.is_current(generation) {
+            return;
+        }
+
+        let prefix = request
+            .nickname
+            .as_deref()
+            .filter(|name| !name.trim().is_empty())
+            .map(|name| format!("{name}，"))
+            .unwrap_or_default();
+        let fallback_body = format!("{prefix}倒计时时间到了。");
+        deliver_phase_alert(
+            "倒计时提醒",
+            fallback_body,
+            request.speech_text.as_deref(),
+            request.notification_body.as_deref(),
+            request.sound_enabled,
+            request.notifications_enabled,
+        );
+
+        let payload = CountdownFinishedPayload {
+            phase_id: request.phase_id,
+        };
+
+        let _ = app.emit("countdown://finished", payload);
+    });
+}
+
+#[tauri::command]
+fn cancel_countdown_phase(scheduler: State<'_, CountdownScheduler>) {
+    scheduler.0.cancel();
 }
 
 #[tauri::command]
@@ -181,9 +267,12 @@ fn request_system_location() -> Result<SystemLocationPayload, String> {
 pub fn run() {
     tauri::Builder::default()
         .manage(PomodoroScheduler::default())
+        .manage(CountdownScheduler::default())
         .invoke_handler(tauri::generate_handler![
             schedule_pomodoro_phase,
             cancel_pomodoro_phase,
+            schedule_countdown_phase,
+            cancel_countdown_phase,
             request_system_location
         ])
         .setup(|app| {
