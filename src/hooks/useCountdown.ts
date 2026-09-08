@@ -123,7 +123,9 @@ export function useCountdown({ soundEnabled, notificationsEnabled, nickname }: C
     }
   }, [nickname, notificationsEnabled, soundEnabled]);
 
-  const markFinished = useCallback((phaseId: string | null, finishedAt: number) => {
+  // 只更新状态，不负责播报：Tauri 下语音/通知由 Rust 端单次触发，
+  // 浏览器下由下方 web 专属 effect 播报，避免两条链路各响一次
+  const markFinished = useCallback((phaseId: string | null) => {
     setState(prev => {
       if (phaseId !== null && prev.phaseId !== phaseId) {
         return prev;
@@ -131,8 +133,7 @@ export function useCountdown({ soundEnabled, notificationsEnabled, nickname }: C
 
       return { ...prev, isRunning: false, finished: true, endsAt: null, phaseId: null };
     });
-    announceFinished(finishedAt);
-  }, [announceFinished]);
+  }, []);
 
   useEffect(() => {
     if (!isTauri()) {
@@ -142,7 +143,7 @@ export function useCountdown({ soundEnabled, notificationsEnabled, nickname }: C
     let unlisten: (() => void) | undefined;
 
     listen<CountdownFinishedPayload>('countdown://finished', (event) => {
-      markFinished(event.payload.phaseId, Date.now());
+      markFinished(event.payload.phaseId);
     }).then((dispose) => {
       unlisten = dispose;
     });
@@ -186,8 +187,9 @@ export function useCountdown({ soundEnabled, notificationsEnabled, nickname }: C
       return;
     }
 
-    markFinished(state.phaseId, Date.now());
-  }, [state.isRunning, state.timeLeft, state.phaseId, markFinished]);
+    announceFinished(Date.now());
+    markFinished(state.phaseId);
+  }, [state.isRunning, state.timeLeft, state.phaseId, announceFinished, markFinished]);
 
   useEffect(() => {
     if (!isTauri() || !state.isRunning || !state.phaseId || !state.endsAt) {
