@@ -214,7 +214,7 @@ async function getSystemLocation(): Promise<SystemLocationResult> {
     };
   }
 
-  return new Promise(resolve => {
+  const geolocationPromise = new Promise<SystemLocationResult>(resolve => {
     navigator.geolocation.getCurrentPosition(
       position => {
         resolve({
@@ -243,6 +243,19 @@ async function getSystemLocation(): Promise<SystemLocationResult> {
       }
     );
   });
+
+  // 部分环境（如内嵌 WebView）授权弹窗未决时 timeout 不生效，会无限挂起，
+  // 这里加硬超时强制降级，避免堵死 IP 定位兜底
+  const hardTimeout = new Promise<SystemLocationResult>(resolve => {
+    window.setTimeout(() => resolve({
+      city: null,
+      permission: 'unsupported',
+      coordinates: null,
+      error: '系统定位超时，改用 IP 定位',
+    }), 12000);
+  });
+
+  return Promise.race([geolocationPromise, hardTimeout]);
 }
 
 function getPermissionMessage(permission: LocationPermission, fallbackError: string | null) {

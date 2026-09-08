@@ -4,12 +4,20 @@ import { useWeather } from '../hooks/useWeather';
 import { useLocation } from '../hooks/useLocation';
 import { SectionCard } from './SectionCard';
 
+export interface WeatherSummary {
+  icon: string;
+  temperature: number;
+  city: string;
+}
+
 interface WeatherCardProps {
   nickname: string;
   notificationsEnabled: boolean;
   soundEnabled: boolean;
   expanded: boolean;
   onToggle: () => void;
+  /** 天气数据变化时上报摘要（供时钟展示），无数据时上报 null */
+  onSummaryChange?: (summary: WeatherSummary | null) => void;
 }
 
 const REFRESH_INTERVAL_MS = 30 * 60 * 1000;
@@ -20,6 +28,7 @@ export function WeatherCard({
   soundEnabled,
   expanded,
   onToggle,
+  onSummaryChange,
 }: WeatherCardProps) {
   const location = useLocation();
   const [cityInput, setCityInput] = useState('');
@@ -30,6 +39,14 @@ export function WeatherCard({
     notificationsEnabled,
     soundEnabled,
   });
+
+  useEffect(() => {
+    onSummaryChange?.(
+      weather
+        ? { icon: weather.icon, temperature: weather.temperature, city: weather.city }
+        : null,
+    );
+  }, [weather, onSummaryChange]);
 
   useEffect(() => {
     if (location.loading) {

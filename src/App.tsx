@@ -4,6 +4,7 @@ import { PomodoroTimer } from './components/PomodoroTimer';
 import { DigitalClock } from './components/DigitalClock';
 import { CountdownWidget } from './components/CountdownWidget';
 import { WeatherCard } from './components/WeatherCard';
+import type { WeatherSummary } from './components/WeatherCard';
 import { AlarmWidget } from './components/AlarmWidget';
 import { JingerLogo } from './components/JingerLogo';
 import { useSettings } from './hooks/useSettings';
@@ -36,6 +37,7 @@ function App() {
       ? saved
       : null;
   });
+  const [weatherSummary, setWeatherSummary] = useState<WeatherSummary | null>(null);
 
   const toggleSection = useCallback((key: SectionKey) => {
     setExpandedSection(prev => {
@@ -185,7 +187,7 @@ function App() {
 
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="flex flex-col gap-4">
-          <DigitalClock />
+          <DigitalClock weatherSummary={weatherSummary} />
 
           <PomodoroTimer
             mode={pomodoro.mode}
@@ -214,6 +216,7 @@ function App() {
             soundEnabled={settings.soundEnabled}
             expanded={expandedSection === 'weather'}
             onToggle={() => toggleSection('weather')}
+            onSummaryChange={setWeatherSummary}
           />
 
           <AlarmWidget

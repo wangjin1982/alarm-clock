@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { WeatherSummary } from './WeatherCard';
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -16,7 +17,12 @@ function formatDate(date: Date) {
   return `${month}月${day}日 星期${weekday}`;
 }
 
-export function DigitalClock() {
+interface DigitalClockProps {
+  /** 识别到城市天气时展示在日期下方，由天气卡片上报 */
+  weatherSummary?: WeatherSummary | null;
+}
+
+export function DigitalClock({ weatherSummary }: DigitalClockProps) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -35,9 +41,13 @@ export function DigitalClock() {
           <span className="text-[2.6rem] font-bold leading-none text-slate-100">{minute}</span>
           <span className="ml-1 text-lg font-medium leading-none text-slate-500">{second}</span>
         </div>
-        <div className="pb-0.5 text-right">
+        <div className="min-w-0 pb-0.5 text-right">
           <div className="text-xs text-slate-400">{formatDate(now)}</div>
-          <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-600">Local Time</div>
+          {weatherSummary && (
+            <div className="mt-1 max-w-[9.5rem] truncate text-[11px] text-slate-500">
+              {weatherSummary.icon} {weatherSummary.temperature}° {weatherSummary.city}
+            </div>
+          )}
         </div>
       </div>
     </div>
