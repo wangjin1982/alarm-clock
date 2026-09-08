@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 
-const DEFAULT_CITY = '北京';
+// 定位不可用（未授权/被代理污染/服务失败）时的兜底城市，带坐标可直接查天气
+const DEFAULT_CITY = '镇江';
+const DEFAULT_COORDINATES: LocationCoordinates = { lat: 32.19, lon: 119.43 };
 const MANUAL_CITY_KEY = 'alarm-clock-manual-city';
 
 function loadManualCity(): string | null {
@@ -72,6 +74,7 @@ interface NativeLocationResult {
 interface IpCityResult {
   city: string;
   coordinates: LocationCoordinates | null;
+  countryCode: string | null;
 }
 
 async function getCityByIP(): Promise<IpCityResult | null> {
@@ -92,6 +95,7 @@ async function getCityByIP(): Promise<IpCityResult | null> {
       city?: string;
       latitude?: number;
       longitude?: number;
+      country_code?: string;
     };
 
     if (!data.success || !data.city) {
@@ -105,6 +109,7 @@ async function getCityByIP(): Promise<IpCityResult | null> {
     return {
       city: cityMap[data.city] || data.city,
       coordinates,
+      countryCode: data.country_code ?? null,
     };
   } catch {
     return null;
@@ -278,7 +283,7 @@ export function useLocation() {
   const manualCity = loadManualCity();
   const [location, setLocation] = useState<LocationData>({
     city: manualCity ?? DEFAULT_CITY,
-    coordinates: null,
+    coordinates: manualCity ? null : DEFAULT_COORDINATES,
     loading: !manualCity,
     error: null,
     permission: 'prompt',
@@ -328,10 +333,12 @@ export function useLocation() {
     }
 
     const ipCity = ipResult?.city ?? null;
+    // IP 定位走网络出口，代理环境下可能返回境外城市视为"未获取到正确地址"
+    const ipCityTrusted = ipResult?.countryCode === 'CN';
 
     if (systemLocation.coordinates) {
       setLocation({
-        city: systemLocation.city ?? ipCity ?? '当前位置',
+        city: systemLocation.city ?? (ipCityTrusted ? ipCity : null) ?? '当前位置',
         coordinates: systemLocation.coordinates,
         loading: false,
         error: null,
@@ -341,14 +348,37 @@ export function useLocation() {
       return;
     }
 
-    setLocation(prev => ({
-      city: prev.source === 'manual' ? prev.city : ipCity ?? DEFAULT_CITY,
-      coordinates: prev.source === 'manual' ? null : ipResult?.coordinates ?? null,
-      loading: false,
-      error: getPermissionMessage(systemLocation.permission, systemLocation.error),
-      permission: systemLocation.permission,
-      source: prev.source === 'manual' ? 'manual' : ipCity ? 'ip' : 'default',
-    }));
+    setLocation(prev => {
+      if (prev.source === 'manual') {
+        return {
+          ...prev,
+          loading: false,
+          error: getPermissionMessage(systemLocation.permission, systemLocation.error),
+          permission: systemLocation.permission,
+        };
+      }
+
+      if (ipCityTrusted && ipCity) {
+        return {
+          city: ipCity,
+          coordinates: ipResult?.coordinates ?? null,
+          loading: false,
+          error: getPermissionMessage(systemLocation.permission, systemLocation.error),
+          permission: systemLocation.permission,
+          source: 'ip',
+        };
+      }
+
+      // 定位不可信（未授权 / IP 在境外 / 服务失败）：默认镇江
+      return {
+        city: DEFAULT_CITY,
+        coordinates: DEFAULT_COORDINATES,
+        loading: false,
+        error: null,
+        permission: systemLocation.permission,
+        source: 'default',
+      };
+    });
   }, []);
 
   useEffect(() => {
@@ -373,7 +403,7 @@ export function useLocation() {
     }
 
     if (location.permission === 'denied') {
-      return '未授予系统定位权限，当前使用 IP 城市定位';
+      return '未授予系统定位权限，当前使用 IP 城市定位（系统设置中授权后可自动定位）';
     }
 
     if (location.permission === 'restricted') {
@@ -386,6 +416,10 @@ export function useLocation() {
 
     if (location.source === 'ip') {
       return '当前使用 IP 城市定位';
+    }
+
+    if (location.source === 'default') {
+      return '未能获取到可信定位，默认显示镇江天气；可手动输入城市或点定位按钮重试';
     }
 
     return location.error;
