@@ -5,13 +5,18 @@ export interface Settings {
   notifications: boolean;
   soundEnabled: boolean;
   alwaysOnTop: boolean;
+  theme: string;
 };
+
+export const THEME_IDS = ['midnight', 'forest', 'ocean', 'sunset', 'mist'] as const;
+export type ThemeId = (typeof THEME_IDS)[number];
 
 const defaultSettings: Settings = {
   nickname: '',
   notifications: true,
   soundEnabled: true,
   alwaysOnTop: false,
+  theme: 'midnight',
 }
 
 export function useSettings() {
@@ -25,7 +30,14 @@ export function useSettings() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          setSettings({ ...defaultSettings, ...parsed });
+          const merged = { ...defaultSettings, ...parsed };
+          // 主题值需校验，防止 localStorage 被改出非法值
+          setSettings({
+            ...merged,
+            theme: (THEME_IDS as readonly string[]).includes(merged.theme)
+              ? merged.theme
+              : defaultSettings.theme,
+          });
         } catch {
           // 解析失败使用默认值
         }

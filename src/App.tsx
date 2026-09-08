@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Settings, X, GripHorizontal, Minus, User } from 'lucide-react';
 import { PomodoroTimer } from './components/PomodoroTimer';
-import { PomodoroQuoteCard } from './components/PomodoroQuoteCard';
+import { DigitalClock } from './components/DigitalClock';
 import { CountdownWidget } from './components/CountdownWidget';
 import { WeatherCard } from './components/WeatherCard';
 import { AlarmWidget } from './components/AlarmWidget';
 import { JingerLogo } from './components/JingerLogo';
 import { useSettings } from './hooks/useSettings';
+import { Palette } from 'lucide-react';
 import { usePomodoro } from './hooks/usePomodoro';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { isTauri } from '@tauri-apps/api/core';
@@ -14,6 +15,15 @@ import { isTauri } from '@tauri-apps/api/core';
 type SectionKey = 'pomodoro' | 'countdown' | 'weather' | 'alarm';
 
 const EXPANDED_SECTION_KEY = 'alarm-clock-expanded-section';
+
+// 皮肤预览渐变（与 index.css 中各主题的实际配色对应）
+const THEME_OPTIONS: Array<{ id: string; name: string; preview: string }> = [
+  { id: 'midnight', name: '深空', preview: 'linear-gradient(135deg, #0f172a, #334155)' },
+  { id: 'forest', name: '森林', preview: 'linear-gradient(135deg, #0a1a13, #3e7a5a)' },
+  { id: 'ocean', name: '深海', preview: 'linear-gradient(135deg, #071624, #2f6690)' },
+  { id: 'sunset', name: '暮色', preview: 'linear-gradient(135deg, #1b1226, #7d4f96)' },
+  { id: 'mist', name: '晨雾', preview: 'linear-gradient(135deg, #dde3ea, #f8fafc)' },
+];
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -52,6 +62,14 @@ function App() {
       Notification.requestPermission();
     }
   }, []);
+
+  useEffect(() => {
+    if (settings.theme === 'midnight') {
+      delete document.documentElement.dataset.theme;
+    } else {
+      document.documentElement.dataset.theme = settings.theme;
+    }
+  }, [settings.theme]);
 
   const syncWindowState = useCallback(async () => {
     if (!isTauriEnv) {
@@ -122,10 +140,6 @@ function App() {
     return <div className="flex items-center justify-center h-full text-slate-400">加载中...</div>;
   }
 
-  const quoteText = pomodoro.mode === 'break'
-    ? '休息几分钟，下一轮继续稳稳推进。'
-    : pomodoro.quote;
-
   return (
     <div className="relative w-full h-full flex flex-col p-4 select-none">
       <div
@@ -171,6 +185,8 @@ function App() {
 
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="flex flex-col gap-4">
+          <DigitalClock />
+
           <PomodoroTimer
             mode={pomodoro.mode}
             formattedTime={pomodoro.formattedTime}
@@ -183,8 +199,6 @@ function App() {
             expanded={expandedSection === 'pomodoro'}
             onToggle={() => toggleSection('pomodoro')}
           />
-
-          <PomodoroQuoteCard quoteText={quoteText} />
 
           <CountdownWidget
             nickname={settings.nickname}
@@ -254,6 +268,36 @@ function App() {
                   <p className="text-xs text-slate-500">
                     设置后，语音播报时会先称呼您
                   </p>
+                </div>
+              </div>
+
+              <div className="border-t border-white/10" />
+
+              {/* 皮肤 */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+                  <Palette size={16} />
+                  <span>皮肤</span>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {THEME_OPTIONS.map(theme => (
+                    <button
+                      key={theme.id}
+                      onClick={() => updateSetting('theme', theme.id)}
+                      className={`flex flex-col items-center gap-1.5 rounded-xl px-1 py-2 transition-all ${
+                        settings.theme === theme.id
+                          ? 'bg-white/10 ring-2 ring-sky-400'
+                          : 'hover:bg-white/5'
+                      }`}
+                      title={theme.name}
+                    >
+                      <span
+                        className="h-8 w-8 rounded-full border border-white/20 shadow-inner"
+                        style={{ background: theme.preview }}
+                      />
+                      <span className="text-[11px] text-slate-300">{theme.name}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 

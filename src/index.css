@@ -2,49 +2,180 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * 皮肤系统（借鉴 shadcn/ui 的 CSS 变量主题模式）：
+ * tailwind.config.cjs 把 slate 色阶映射到 --c-slate-* 变量，
+ * 每套皮肤通过 [data-theme='…'] 覆盖变量实现整体换肤。
+ * 默认（无 data-theme 或 data-theme='midnight'）即"深空"配色。
+ */
+:root {
+  --c-slate-100: 241 245 249;
+  --c-slate-200: 226 232 240;
+  --c-slate-300: 203 213 225;
+  --c-slate-400: 148 163 184;
+  --c-slate-500: 100 116 139;
+  --c-slate-600: 71 85 105;
+  --c-slate-700: 51 65 85;
+  --c-slate-800: 30 41 59;
+  --c-slate-900: 15 23 42;
+
+  --text-base: #f8fafc;
+  --panel-bg: rgba(255, 255, 255, 0.10);
+  --panel-border: rgba(255, 255, 255, 0.20);
+  --scrollbar-track: rgba(255, 255, 255, 0.10);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.20);
+}
+
+[data-theme='forest'] {
+  --c-slate-100: 217 239 228;
+  --c-slate-200: 183 220 201;
+  --c-slate-300: 143 196 171;
+  --c-slate-400: 122 176 150;
+  --c-slate-500: 90 143 118;
+  --c-slate-600: 62 104 82;
+  --c-slate-700: 41 74 58;
+  --c-slate-800: 24 46 35;
+  --c-slate-900: 10 26 19;
+  --text-base: #ecf7f0;
+  --panel-bg: rgba(255, 255, 255, 0.08);
+  --panel-border: rgba(183, 220, 201, 0.22);
+  --scrollbar-track: rgba(183, 220, 201, 0.10);
+  --scrollbar-thumb: rgba(183, 220, 201, 0.22);
+}
+
+[data-theme='ocean'] {
+  --c-slate-100: 215 235 247;
+  --c-slate-200: 174 212 233;
+  --c-slate-300: 127 181 214;
+  --c-slate-400: 106 154 184;
+  --c-slate-500: 76 122 152;
+  --c-slate-600: 52 88 116;
+  --c-slate-700: 34 62 84;
+  --c-slate-800: 19 41 60;
+  --c-slate-900: 7 22 36;
+  --text-base: #edf6fc;
+  --panel-bg: rgba(255, 255, 255, 0.08);
+  --panel-border: rgba(174, 212, 233, 0.22);
+  --scrollbar-track: rgba(174, 212, 233, 0.10);
+  --scrollbar-thumb: rgba(174, 212, 233, 0.22);
+}
+
+[data-theme='sunset'] {
+  --c-slate-100: 239 226 245;
+  --c-slate-200: 220 194 232;
+  --c-slate-300: 195 157 214;
+  --c-slate-400: 172 133 194;
+  --c-slate-500: 138 103 160;
+  --c-slate-600: 100 75 120;
+  --c-slate-700: 70 52 86;
+  --c-slate-800: 47 34 60;
+  --c-slate-900: 27 18 38;
+  --text-base: #f6eefb;
+  --panel-bg: rgba(255, 255, 255, 0.09);
+  --panel-border: rgba(220, 194, 232, 0.24);
+  --scrollbar-track: rgba(220, 194, 232, 0.10);
+  --scrollbar-thumb: rgba(220, 194, 232, 0.24);
+}
+
+[data-theme='mist'] {
+  --c-slate-100: 40 49 61;
+  --c-slate-200: 58 69 83;
+  --c-slate-300: 74 85 99;
+  --c-slate-400: 93 104 117;
+  --c-slate-500: 110 120 133;
+  --c-slate-600: 152 161 173;
+  --c-slate-700: 182 189 199;
+  --c-slate-800: 221 227 234;
+  --c-slate-900: 238 242 247;
+  --text-base: #28313d;
+  --panel-bg: rgba(255, 255, 255, 0.72);
+  --panel-border: rgba(15, 23, 42, 0.08);
+  --scrollbar-track: rgba(15, 23, 42, 0.06);
+  --scrollbar-thumb: rgba(15, 23, 42, 0.18);
+}
+
 @layer base {
   * {
     @apply box-border;
   }
-  
+
   html, body, #root {
     @apply w-full h-full m-0 p-0 overflow-hidden;
   }
-  
+
   body {
-    @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white antialiased;
+    @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 antialiased;
+    color: var(--text-base);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   }
 }
 
 @layer components {
   .glass-panel {
-    @apply bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl;
+    @apply backdrop-blur-lg border rounded-2xl shadow-2xl;
+    background: var(--panel-bg);
+    border-color: var(--panel-border);
   }
-  
+
   .btn-primary {
-    @apply px-4 py-2 bg-gradient-to-r from-tomato to-tomato-dark text-white rounded-xl 
+    @apply px-4 py-2 bg-gradient-to-r from-tomato to-tomato-dark text-white rounded-xl
            font-medium transition-all duration-200 hover:scale-105 active:scale-95
            shadow-lg shadow-tomato/30;
   }
-  
+
   .btn-secondary {
-    @apply px-4 py-2 bg-white/10 text-white rounded-xl font-medium 
+    @apply px-4 py-2 bg-white/10 text-white rounded-xl font-medium
            transition-all duration-200 hover:bg-white/20 active:scale-95;
   }
-  
+
   .timer-display {
     @apply text-6xl font-bold tracking-tight tabular-nums;
     text-shadow: 0 4px 20px rgba(255, 107, 107, 0.5);
   }
-  
+
   .progress-ring {
     transform: rotate(-90deg);
   }
-  
+
   .progress-ring-circle {
     transition: stroke-dashoffset 0.5s ease;
   }
+}
+
+/* 浅色皮肤（晨雾）下，白色半透明覆盖层改为深色半透明，保证对比度 */
+[data-theme='mist'] .bg-white\/5 {
+  background-color: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme='mist'] .bg-white\/10 {
+  background-color: rgba(15, 23, 42, 0.07);
+}
+
+[data-theme='mist'] .hover\:bg-white\/20:hover {
+  background-color: rgba(15, 23, 42, 0.13);
+}
+
+/* 浅色皮肤下强调色文字加深，保证白底可读（仅覆盖文字色，渐变按钮背景不受影响） */
+[data-theme='mist'] .text-sky-300 {
+  color: #0369a1;
+}
+
+[data-theme='mist'] .text-sky-400 {
+  color: #075985;
+}
+
+[data-theme='mist'] .text-amber-300,
+[data-theme='mist'] .text-amber-200 {
+  color: #b45309;
+}
+
+[data-theme='mist'] .text-tomato,
+[data-theme='mist'] .text-tomato-light {
+  color: #dc2626;
+}
+
+[data-theme='mist'] .text-emerald-400 {
+  color: #047857;
 }
 
 /* 自定义滚动条 */
@@ -53,15 +184,11 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--scrollbar-track);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
 }
