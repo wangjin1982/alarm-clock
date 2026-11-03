@@ -35,5 +35,5 @@ category = "Productivity"
 short_description = "桌面闹钟"
 long_description = """
 一个支持番茄钟、天气闹钟和窗口锁定的桌面小工具。
-适用于 macOS 10.15+
+支持 macOS 10.15+ 和 Windows 10/11
 """

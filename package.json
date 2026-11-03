@@ -19,7 +19,8 @@
     "pomodoro",
     "desktop",
     "widget",
-    "macos"
+    "macos",
+    "windows"
   ],
   "author": "Alarm Clock Team",
   "license": "MIT",

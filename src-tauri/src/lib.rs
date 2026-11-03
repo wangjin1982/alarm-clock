@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+#[cfg(target_os = "macos")]
+use std::ffi::{CStr, c_char};
+#[cfg(target_os = "macos")]
+use std::process::Command;
 use std::{
-    ffi::{CStr, c_char},
-    process::Command,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -9,7 +11,9 @@ use std::{
     thread,
     time::Duration,
 };
-use tauri::{AppHandle, Emitter, Manager, State};
+#[cfg(target_os = "macos")]
+use tauri::Manager;
+use tauri::{AppHandle, Emitter, State};
 
 #[cfg(target_os = "macos")]
 unsafe extern "C" {
@@ -112,16 +116,92 @@ impl PomodoroMode {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn escape_applescript_text(text: &str) -> String {
     text.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
-fn speak_on_macos(message: &str) {
-    #[cfg(target_os = "macos")]
-    let _ = Command::new("say").arg(message).status();
+#[cfg(target_os = "windows")]
+fn escape_powershell_text(text: &str) -> String {
+    text.replace('\'', "''")
 }
 
-fn notify_on_macos(title: &str, body: &str) {
+#[cfg(target_os = "windows")]
+mod windows {
+    use std::process::{Command, Output};
+
+    pub(super) const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    const BASE64_TABLE: &[u8; 64] =
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    fn base64_encode(input: &[u8]) -> String {
+        let mut encoded = String::with_capacity((input.len() + 2) / 3 * 4);
+        for chunk in input.chunks(3) {
+            let first = chunk[0] as u32;
+            let second = chunk.get(1).copied().unwrap_or(0) as u32;
+            let third = chunk.get(2).copied().unwrap_or(0) as u32;
+            let value = (first << 16) | (second << 8) | third;
+            encoded.push(BASE64_TABLE[((value >> 18) & 0x3f) as usize] as char);
+            encoded.push(BASE64_TABLE[((value >> 12) & 0x3f) as usize] as char);
+            if chunk.len() > 1 {
+                encoded.push(BASE64_TABLE[((value >> 6) & 0x3f) as usize] as char);
+            } else {
+                encoded.push('=');
+            }
+            if chunk.len() > 2 {
+                encoded.push(BASE64_TABLE[(value & 0x3f) as usize] as char);
+            } else {
+                encoded.push('=');
+            }
+        }
+        encoded
+    }
+
+    pub(super) fn run_powershell_script(script: &str) -> Option<Output> {
+        use std::os::windows::process::CommandExt;
+
+        let mut utf16_le = Vec::with_capacity(script.len() * 2);
+        for unit in script.encode_utf16() {
+            utf16_le.extend_from_slice(&unit.to_le_bytes());
+        }
+
+        Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-EncodedCommand",
+                &base64_encode(&utf16_le),
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .ok()
+    }
+}
+
+fn speak_message(message: &str) {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("say").arg(message).status();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let script = format!(
+            "Add-Type -AssemblyName System.Speech; \
+             $speaker = New-Object System.Speech.Synthesis.SpeechSynthesizer; \
+             $voice = $speaker.GetInstalledVoices() | Where-Object {{ $_.VoiceInfo.Culture.Name -like 'zh*' }} | Select-Object -First 1; \
+             if ($voice) {{ $speaker.SelectVoice($voice.VoiceInfo.Name) }}; \
+             $speaker.Speak('{}')",
+            escape_powershell_text(message)
+        );
+        let _ = windows::run_powershell_script(&script);
+    }
+}
+
+fn notify_message(title: &str, body: &str) {
     #[cfg(target_os = "macos")]
     {
         let script = format!(
@@ -130,6 +210,25 @@ fn notify_on_macos(title: &str, body: &str) {
             escape_applescript_text(title)
         );
         let _ = Command::new("osascript").args(["-e", &script]).status();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let script = format!(
+            "Add-Type -AssemblyName System.Windows.Forms; \
+             Add-Type -AssemblyName System.Drawing; \
+             $notify = New-Object System.Windows.Forms.NotifyIcon; \
+             $notify.Icon = [System.Drawing.SystemIcons]::Information; \
+             $notify.BalloonTipTitle = '{}'; \
+             $notify.BalloonTipText = '{}'; \
+             $notify.Visible = $true; \
+             $notify.ShowBalloonTip(5000); \
+             Start-Sleep -Seconds 6; \
+             $notify.Dispose()",
+            escape_powershell_text(title),
+            escape_powershell_text(body)
+        );
+        let _ = windows::run_powershell_script(&script);
     }
 }
 
@@ -149,11 +248,11 @@ fn deliver_phase_alert(
         .unwrap_or_else(|| notification_body.clone());
 
     if sound_enabled {
-        speak_on_macos(&speech_text);
+        speak_message(&speech_text);
     }
 
     if notifications_enabled {
-        notify_on_macos(notification_title, &notification_body);
+        notify_message(notification_title, &notification_body);
     }
 }
 
@@ -242,6 +341,74 @@ fn cancel_countdown_phase(scheduler: State<'_, CountdownScheduler>) {
     scheduler.0.cancel();
 }
 
+#[cfg(target_os = "windows")]
+#[derive(Debug, Deserialize)]
+struct WindowsLocationReport {
+    status: String,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
+    accuracy: Option<f64>,
+    #[serde(rename = "errorCode")]
+    error_code: Option<String>,
+}
+
+#[cfg(target_os = "windows")]
+fn request_windows_location() -> Result<SystemLocationPayload, String> {
+    const SCRIPT: &str = "$ErrorActionPreference = 'Stop'; \
+        Add-Type -AssemblyName System.Runtime.WindowsRuntime; \
+        [void][Windows.Devices.Geolocation.Geolocator, Windows.Devices.Geolocation, ContentType=WindowsRuntime]; \
+        $asTask = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1' } | Select-Object -First 1; \
+        $report = { param($status, $fields) $output = @{ status = $status } + $fields; $output | ConvertTo-Json -Compress }; \
+        try { \
+            $accessMethod = $asTask.MakeGenericMethod([Windows.Devices.Geolocation.GeolocationAccessStatus]); \
+            $accessTask = $accessMethod.Invoke($null, @([Windows.Devices.Geolocation.Geolocator]::RequestAccessAsync())); \
+            $access = $accessTask.Result; \
+            if ($access -eq 'Allowed') { \
+                $locator = [Windows.Devices.Geolocation.Geolocator]::new(); \
+                $positionMethod = $asTask.MakeGenericMethod([Windows.Devices.Geolocation.Geoposition]); \
+                $positionTask = $positionMethod.Invoke($null, @($locator.GetGeopositionAsync())); \
+                if ($positionTask.Wait(15000)) { \
+                    $position = $positionTask.Result; \
+                    $point = $position.Coordinate.Point.Position; \
+                    & $report 'granted' @{ latitude = $point.Latitude; longitude = $point.Longitude; accuracy = $position.Coordinate.Accuracy } \
+                } else { \
+                    & $report 'unsupported' @{ errorCode = 'timeout' } \
+                } \
+            } elseif ($access -eq 'Denied') { \
+                & $report 'denied' @{} \
+            } else { \
+                & $report 'services-disabled' @{} \
+            } \
+        } catch { \
+            & $report 'unsupported' @{ errorCode = 'exception' } \
+        }";
+
+    let output = windows::run_powershell_script(SCRIPT)
+        .ok_or_else(|| "无法启动 PowerShell 获取系统定位".to_string())?;
+
+    if !output.status.success() {
+        return Err("系统定位脚本执行失败".into());
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let report: WindowsLocationReport =
+        serde_json::from_str(stdout.trim()).map_err(|error| format!("解析定位结果失败: {error}"))?;
+
+    let error = match report.error_code.as_deref() {
+        Some("timeout") => Some("系统定位超时，请稍后重试".to_string()),
+        _ => Some("系统定位失败".to_string()),
+    };
+
+    Ok(SystemLocationPayload {
+        status: report.status,
+        city: None,
+        latitude: report.latitude,
+        longitude: report.longitude,
+        accuracy: report.accuracy,
+        error,
+    })
+}
+
 #[tauri::command]
 fn request_system_location() -> Result<SystemLocationPayload, String> {
     #[cfg(target_os = "macos")]
@@ -257,7 +424,12 @@ fn request_system_location() -> Result<SystemLocationPayload, String> {
         serde_json::from_str(&json).map_err(|error| format!("解析定位结果失败: {error}"))
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        request_windows_location()
+    }
+
+    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
         Err("当前平台暂不支持系统定位".into())
     }
@@ -275,10 +447,10 @@ pub fn run() {
             cancel_countdown_phase,
             request_system_location
         ])
-        .setup(|app| {
+        .setup(|_app| {
             #[cfg(target_os = "macos")]
             {
-                if let Some(window) = app.get_webview_window("main") {
+                if let Some(window) = _app.get_webview_window("main") {
                     window.set_title("桌面闹钟").ok();
                 }
             }
