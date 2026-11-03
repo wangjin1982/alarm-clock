@@ -8,7 +8,7 @@ export interface Settings {
   theme: string;
 };
 
-export const THEME_IDS = ['midnight', 'forest', 'ocean', 'sunset', 'mist'] as const;
+export const THEME_IDS = ['midnight', 'forest', 'ocean', 'sunset', 'mist', 'azure'] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
 const defaultSettings: Settings = {

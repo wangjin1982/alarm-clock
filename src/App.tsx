@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Settings, X, GripHorizontal, Minus, User } from 'lucide-react';
 import { PomodoroTimer } from './components/PomodoroTimer';
 import { DigitalClock } from './components/DigitalClock';
@@ -24,11 +24,18 @@ const THEME_OPTIONS: Array<{ id: string; name: string; preview: string }> = [
   { id: 'ocean', name: '深海', preview: 'linear-gradient(135deg, #071624, #2f6690)' },
   { id: 'sunset', name: '暮色', preview: 'linear-gradient(135deg, #1b1226, #7d4f96)' },
   { id: 'mist', name: '晨雾', preview: 'linear-gradient(135deg, #dde3ea, #f8fafc)' },
+  { id: 'azure', name: '蔚蓝', preview: 'linear-gradient(135deg, #060e22, #2e6be4)' },
 ];
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTauriEnv] = useState(() => isTauri());
+  const runtimeLabel = useMemo(() => {
+    if (!isTauriEnv) {
+      return 'Web 浏览器';
+    }
+    return /windows/i.test(navigator.userAgent) ? 'Windows 原生' : 'macOS 原生';
+  }, [isTauriEnv]);
   const { settings, loaded, updateSetting, toggleSetting } = useSettings();
 
   const [expandedSection, setExpandedSection] = useState<SectionKey | null>(() => {
@@ -282,7 +289,7 @@ function App() {
                   <Palette size={16} />
                   <span>皮肤</span>
                 </div>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-6 gap-2">
                   {THEME_OPTIONS.map(theme => (
                     <button
                       key={theme.id}
@@ -369,7 +376,7 @@ function App() {
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>运行环境</span>
-                  <span>{isTauriEnv ? 'macOS 原生' : 'Web 浏览器'}</span>
+                  <span>{runtimeLabel}</span>
                 </div>
               </div>
             </div>
